@@ -1,6 +1,3 @@
-Absolutely! Here's a **complete from-scratch guide to React Query (TanStack Query)** explaining every method and concept in detail:
-
-````markdown
 # React Query - Complete Beginner's Guide
 
 A comprehensive from-scratch guide to TanStack Query (React Query).
