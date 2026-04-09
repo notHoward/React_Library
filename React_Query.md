@@ -1,259 +1,458 @@
 ````markdown
-# React Query - Complete Beginner's Guide
+# React Router - Complete Beginner's Guide
 
-A comprehensive from-scratch guide to TanStack Query (React Query).
+A comprehensive from-scratch guide to React Router v6.
 
 ## Table of Contents
 
-1. [What is React Query](#what-is-react-query)
+1. [What is React Router](#what-is-react-router)
 2. [Installation](#installation)
 3. [Basic Setup](#basic-setup)
-4. [useQuery - Reading Data](#usequery---reading-data)
-5. [useMutation - Changing Data](#usemutation---changing-data)
-6. [Query Keys](#query-keys)
-7. [Query Functions](#query-functions)
-8. [All Query Options](#all-query-options)
-9. [All Mutation Options](#all-mutation-options)
-10. [Query Invalidation](#query-invalidation)
-11. [Parallel Queries](#parallel-queries)
-12. [Dependent Queries](#dependent-queries)
-13. [Infinite Queries](#infinite-queries)
-14. [Complete Examples](#complete-examples)
-15. [API Reference](#api-reference)
+4. [Route Components](#route-components)
+5. [Navigation Links](#navigation-links)
+6. [URL Parameters](#url-parameters)
+7. [Nested Routes](#nested-routes)
+8. [Programmatic Navigation](#programmatic-navigation)
+9. [Query Parameters](#query-parameters)
+10. [Protected Routes](#protected-routes)
+11. [Route Layouts](#route-layouts)
+12. [Lazy Loading](#lazy-loading)
+13. [Complete Examples](#complete-examples)
+14. [API Reference](#api-reference)
 
 ---
 
-## What is React Query
+## What is React Router
 
-React Query is a library that handles **fetching, caching, and updating data** in your React app.
+React Router is a library that enables **navigation between different pages** in your React app without refreshing the browser.
 
-**What React Query does for you:**
+**What React Router does:**
 
-- Fetches data from APIs
-- Caches the data so you don't fetch again
-- Automatically refetches when data is stale
-- Shows loading and error states
-- Retries failed requests
-- Updates data in the background
+- Changes the URL when you click links
+- Renders different components based on the URL
+- Maintains browser history (back/forward buttons work)
+- Passes data through URLs (parameters, query strings)
 
-**Without React Query (plain React):**
+**Without React Router (multi-page app):**
 
-```jsx
-function Users() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetch("/api/users")
-      .then((res) => res.json())
-      .then((data) => {
-        setUsers(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err);
-        setLoading(false);
-      });
-  }, []);
-
-  // Plus you need to handle refetching, caching, etc.
-}
+```html
+<!-- Each link causes full page refresh -->
+<a href="/about">About</a>
+<!-- Browser refreshes -->
+<a href="/contact">Contact</a>
+<!-- Browser refreshes -->
 ```
 ````
 
-**With React Query:**
+**With React Router (single-page app):**
 
 ```jsx
-function Users() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["users"],
-    queryFn: () => fetch("/api/users").then((res) => res.json()),
-  });
-  // That's it! Caching, refetching, retries all handled!
-}
+// No page refresh, just component changes
+<Link to="/about">About</Link>  // URL changes, content updates
+<Link to="/contact">Contact</Link>  // Smooth, fast navigation
 ```
 
 ## Installation
 
 ```bash
-npm install @tanstack/react-query
+npm install react-router-dom
 ```
 
 ## Basic Setup
 
-### Step 1: Create QueryClient
+### Step 1: Wrap App with BrowserRouter
 
 ```jsx
-// main.jsx or App.jsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+// main.jsx or index.jsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
 
-// 1. Create a client
-const queryClient = new QueryClient();
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <BrowserRouter>
+    {" "}
+    {/* 1. Wrap your app */}
+    <App />
+  </BrowserRouter>,
+);
+```
+
+### Step 2: Define Routes
+
+```jsx
+// App.jsx
+import { Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 
 function App() {
   return (
-    // 2. Provide the client to your app
-    <QueryClientProvider client={queryClient}>
-      <YourApp />
-      {/* 3. Optional: Devtools for debugging */}
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <div>
+      {/* 2. Define your routes */}
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+      </Routes>
+    </div>
   );
 }
 ```
 
-### Step 2: Use useQuery in Components
+### Step 3: Add Navigation Links
 
 ```jsx
-import { useQuery } from "@tanstack/react-query";
+// components/Navigation.jsx
+import { Link } from "react-router-dom";
 
-function UserList() {
-  // 4. Use useQuery to fetch data
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["users"], // Unique key for this query
-    queryFn: fetchUsers, // Function that fetches data
-  });
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
+function Navigation() {
   return (
-    <ul>
-      {data.map((user) => (
-        <li key={user.id}>{user.name}</li>
-      ))}
-    </ul>
+    <nav>
+      {/* 3. Use Link for navigation */}
+      <Link to="/">Home</Link>
+      <Link to="/about">About</Link>
+      <Link to="/contact">Contact</Link>
+    </nav>
   );
 }
 ```
 
 ---
 
-## useQuery - Reading Data
+## Route Components
 
-### The Basics
+### Understanding Routes and Route
 
 ```jsx
-import { useQuery } from "@tanstack/react-query";
+import { Routes, Route } from "react-router-dom";
 
-function Todos() {
-  // 1. Define your fetch function
-  const fetchTodos = async () => {
-    const response = await fetch("/api/todos");
-    if (!response.ok) throw new Error("Failed to fetch");
-    return response.json();
-  };
+function App() {
+  return (
+    <Routes>
+      {" "}
+      {/* Routes - container for all routes */}
+      {/* Route - maps a URL path to a component */}
+      <Route path="/" element={<Home />} />
+      {/* Path with parameter */}
+      <Route path="/users/:id" element={<UserProfile />} />
+      {/* Index route (renders at parent path) */}
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<Overview />} /> {/* Renders at /dashboard */}
+        <Route path="settings" element={<Settings />} />{" "}
+        {/* /dashboard/settings */}
+      </Route>
+      {/* Catch-all route (404) */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+```
 
-  // 2. Use useQuery
-  const query = useQuery({
-    queryKey: ["todos"],
-    queryFn: fetchTodos,
-  });
+### Route Props Explained
 
-  // 3. Destructure what you need
-  const {
-    data, // The actual data from your API
-    isLoading, // True on first load
-    isError, // True if there was an error
-    error, // The error object
-    isFetching, // True anytime it's fetching (including background)
-    refetch, // Manually refetch data
-    isSuccess, // True if data loaded successfully
-    isIdle, // True if query hasn't run yet
-    status, // 'idle', 'loading', 'error', 'success'
-    fetchStatus, // 'idle', 'fetching', 'paused'
-    dataUpdatedAt, // Timestamp of last data update
-    errorUpdatedAt, // Timestamp of last error
-  } = query;
+```jsx
+<Route
+  path="/about"           // URL path to match
+  element={<About />}     // Component to render
+  index                   // Index route (no path needed)
+  caseSensitive={true}    // Match case exactly (/About not /about)
+/>
 
-  // 4. Handle different states
-  if (isLoading) return <div>Loading todos...</div>;
-  if (isError) return <div>Error: {error.message}</div>;
+// Path patterns
+<Route path="/" element={<Home />} />                    // Exact match
+<Route path="/about" element={<About />} />              // /about
+<Route path="/users/:id" element={<User />} />           // /users/123
+<Route path="/products/*" element={<Products />} />      // /products/anything
+<Route path="*" element={<NotFound />} />                // Catch all
+```
+
+---
+
+## Navigation Links
+
+### Link Component - Basic Navigation
+
+```jsx
+import { Link } from "react-router-dom";
+
+function Navigation() {
+  return (
+    <nav>
+      {/* Basic link */}
+      <Link to="/">Home</Link>
+
+      {/* Link with state (data passed to next page) */}
+      <Link to="/dashboard" state={{ fromHome: true }}>
+        Dashboard
+      </Link>
+
+      {/* Replace history (can't go back) */}
+      <Link to="/login" replace>
+        Login
+      </Link>
+
+      {/* Link with custom styling */}
+      <Link
+        to="/products"
+        style={{ color: "blue", textDecoration: "none" }}
+        className="nav-link"
+      >
+        Products
+      </Link>
+    </nav>
+  );
+}
+```
+
+### NavLink Component - Active Links
+
+```jsx
+import { NavLink } from "react-router-dom";
+
+function Navigation() {
+  return (
+    <nav>
+      {/* NavLink adds 'active' class when current route matches */}
+      <NavLink to="/">Home</NavLink>
+      {/* Renders: <a href="/" class="active">Home</a> when on home page */}
+
+      {/* Custom active class name */}
+      <NavLink
+        to="/about"
+        className={({ isActive }) => (isActive ? "active-link" : "normal-link")}
+      >
+        About
+      </NavLink>
+
+      {/* Custom active style */}
+      <NavLink
+        to="/contact"
+        style={({ isActive }) => ({
+          color: isActive ? "red" : "blue",
+          fontWeight: isActive ? "bold" : "normal",
+        })}
+      >
+        Contact
+      </NavLink>
+
+      {/* End prop - only active on exact path */}
+      <NavLink to="/products" end>
+        Products
+      </NavLink>
+      {/* Active only on /products, not /products/123 */}
+    </nav>
+  );
+}
+```
+
+### Navigate Component - Redirects
+
+```jsx
+import { Navigate } from "react-router-dom";
+
+function ProtectedRoute({ isLoggedIn, children }) {
+  // Redirect to login if not authenticated
+  if (!isLoggedIn) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
+function LoginPage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  if (isLoggedIn) {
+    // Redirect to dashboard after login
+    return <Navigate to="/dashboard" />;
+  }
+
+  return <form onSubmit={() => setIsLoggedIn(true)}>...</form>;
+}
+```
+
+---
+
+## URL Parameters
+
+### useParams - Read URL Parameters
+
+```jsx
+import { useParams } from 'react-router-dom';
+
+// Route definition
+<Route path="/users/:userId" element={<UserProfile />} />
+<Route path="/products/:category/:productId" element={<ProductDetail />} />
+
+function UserProfile() {
+  // Get parameters from URL
+  const { userId } = useParams();
+  // If URL is /users/123, userId = '123'
+
+  return <div>User ID: {userId}</div>;
+}
+
+function ProductDetail() {
+  // Multiple parameters
+  const { category, productId } = useParams();
+  // URL: /products/electronics/456
+  // category = 'electronics', productId = '456'
 
   return (
     <div>
-      {isFetching && <div>Updating in background...</div>}
-      <ul>
-        {data.map((todo) => (
-          <li key={todo.id}>{todo.title}</li>
-        ))}
-      </ul>
-      <button onClick={() => refetch()}>Refresh</button>
+      <p>Category: {category}</p>
+      <p>Product ID: {productId}</p>
     </div>
   );
 }
 ```
 
-### Understanding Each useQuery Return Value
+### useParams with Data Fetching
 
 ```jsx
-const query = useQuery({
-  queryKey: ["users"],
-  queryFn: fetchUsers,
-});
+import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
-// 1. data - The actual response from your API
-console.log(query.data); // [{ id: 1, name: 'John' }, ...]
+function UserProfile() {
+  const { userId } = useParams();
 
-// 2. isLoading - First time loading (no data yet)
-console.log(query.isLoading); // true/false
-
-// 3. isFetching - Any fetching (including background updates)
-console.log(query.isFetching); // true while fetching
-
-// 4. isError - Something went wrong
-console.log(query.isError); // true/false
-
-// 5. error - The error object
-console.log(query.error); // Error: Failed to fetch
-
-// 6. isSuccess - Data loaded successfully
-console.log(query.isSuccess); // true/false
-
-// 7. refetch - Function to manually fetch again
-query.refetch(); // Fetches fresh data
-
-// 8. status - Current state
-console.log(query.status); // 'idle', 'loading', 'error', 'success'
-
-// 9. fetchStatus - Fetching status
-console.log(query.fetchStatus); // 'idle', 'fetching', 'paused'
-```
-
-### Real-world Example with Parameters
-
-```jsx
-function UserProfile({ userId }) {
-  const {
-    data: user,
-    isLoading,
-    error,
-  } = useQuery({
-    // queryKey includes userId - different userId = different cache
+  const { data: user, isLoading } = useQuery({
     queryKey: ["user", userId],
-
-    // queryFn receives the queryKey
-    queryFn: async ({ queryKey }) => {
-      const [_, id] = queryKey; // ['user', 123] -> id = 123
-      const response = await fetch(`/api/users/${id}`);
-      if (!response.ok) throw new Error("User not found");
-      return response.json();
-    },
-
-    // Only run if userId exists
-    enabled: !!userId,
+    queryFn: () => fetchUser(userId),
   });
 
-  if (!userId) return <div>Select a user</div>;
-  if (isLoading) return <div>Loading user...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+  if (isLoading) return <div>Loading user {userId}...</div>;
+
+  return <div>{user.name}</div>;
+}
+```
+
+### Optional Parameters
+
+```jsx
+// Route with optional parameter
+<Route path="/products/:productId?" element={<Products />} />;
+// Matches both /products and /products/123
+
+function Products() {
+  const { productId } = useParams();
+
+  if (productId) {
+    return <ProductDetail id={productId} />;
+  }
+  return <ProductList />;
+}
+```
+
+---
+
+## Nested Routes
+
+### Basic Nested Routes
+
+```jsx
+// App.jsx
+import { Routes, Route } from "react-router-dom";
+import DashboardLayout from "./layouts/DashboardLayout";
+import Overview from "./pages/Overview";
+import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
+
+function App() {
+  return (
+    <Routes>
+      {/* Parent route with layout */}
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        {/* Child routes - render inside DashboardLayout */}
+        <Route index element={<Overview />} /> // /dashboard
+        <Route path="settings" element={<Settings />} /> // /dashboard/settings
+        <Route path="profile" element={<Profile />} /> // /dashboard/profile
+      </Route>
+    </Routes>
+  );
+}
+```
+
+### Layout Component with Outlet
+
+```jsx
+// layouts/DashboardLayout.jsx
+import { Outlet, NavLink } from "react-router-dom";
+
+function DashboardLayout() {
+  return (
+    <div>
+      {/* Sidebar navigation */}
+      <nav>
+        <NavLink to="/dashboard">Overview</NavLink>
+        <NavLink to="/dashboard/settings">Settings</NavLink>
+        <NavLink to="/dashboard/profile">Profile</NavLink>
+      </nav>
+
+      {/* Main content - child routes render here */}
+      <main>
+        <Outlet /> {/* This is where child components go */}
+      </main>
+    </div>
+  );
+}
+```
+
+### Deep Nesting
+
+```jsx
+// App.jsx
+<Routes>
+  <Route path="/shop" element={<ShopLayout />}>
+    <Route index element={<ShopHome />} />
+
+    <Route path="products" element={<ProductsLayout />}>
+      <Route index element={<ProductList />} />
+      <Route path=":productId" element={<ProductDetail />}>
+        <Route path="reviews" element={<ProductReviews />} />
+        <Route path="specs" element={<ProductSpecs />} />
+      </Route>
+    </Route>
+
+    <Route path="cart" element={<Cart />} />
+  </Route>
+</Routes>;
+
+// ShopLayout.jsx
+function ShopLayout() {
+  return (
+    <div>
+      <header>Shop Header</header>
+      <Outlet /> // Renders ShopHome, ProductsLayout, or Cart
+    </div>
+  );
+}
+
+// ProductsLayout.jsx
+function ProductsLayout() {
+  return (
+    <div>
+      <aside>Product Filters</aside>
+      <main>
+        <Outlet /> // Renders ProductList or ProductDetail
+      </main>
+    </div>
+  );
+}
+
+// ProductDetail.jsx
+function ProductDetail() {
+  const { productId } = useParams();
 
   return (
     <div>
-      <h1>{user.name}</h1>
-      <p>Email: {user.email}</p>
+      <h1>Product {productId}</h1>
+      <nav>
+        <NavLink to="reviews">Reviews</NavLink>
+        <NavLink to="specs">Specs</NavLink>
+      </nav>
+      <Outlet /> // Renders ProductReviews or ProductSpecs
     </div>
   );
 }
@@ -261,537 +460,99 @@ function UserProfile({ userId }) {
 
 ---
 
-## useMutation - Changing Data
+## Programmatic Navigation
 
-### The Basics
+### useNavigate - Navigate Programmatically
 
 ```jsx
-import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
-function AddTodo() {
-  // 1. Define your mutation function
-  const addTodo = async (newTodo) => {
-    const response = await fetch("/api/todos", {
-      method: "POST",
-      body: JSON.stringify(newTodo),
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!response.ok) throw new Error("Failed to add");
-    return response.json();
+function LoginForm() {
+  const navigate = useNavigate();
+
+  // Basic navigation
+  const goToHome = () => {
+    navigate("/");
   };
 
-  // 2. Use useMutation
-  const mutation = useMutation({
-    mutationFn: addTodo,
-  });
+  // Go back/forward
+  const goBack = () => {
+    navigate(-1); // Go back one page
+  };
 
-  // 3. Destructure what you need
-  const {
-    mutate, // Function to call the mutation
-    isLoading, // True if mutation is in progress
-    isError, // True if mutation failed
-    error, // The error object
-    isSuccess, // True if mutation succeeded
-    data, // Response data from mutation
-    reset, // Reset mutation state
-    status, // 'idle', 'loading', 'error', 'success'
-  } = mutation;
+  const goForward = () => {
+    navigate(1); // Go forward one page
+  };
 
-  // 4. Handle submission
-  const handleSubmit = (e) => {
+  // Replace current history (can't go back)
+  const replacePage = () => {
+    navigate("/welcome", { replace: true });
+  };
+
+  // With state (data passed to next page)
+  const navigateWithState = () => {
+    navigate("/success", {
+      state: {
+        message: "Login successful!",
+        userId: 123,
+      },
+    });
+  };
+
+  // Relative navigation
+  const viewDetails = (id) => {
+    navigate(`details/${id}`); // Goes to /products/details/123
+  };
+
+  // Form submission example
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    mutate({
-      title: formData.get("title"),
-      completed: false,
-    });
+
+    try {
+      await login(formData);
+      navigate("/dashboard"); // Redirect after success
+    } catch (error) {
+      console.error("Login failed");
+    }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <input name="title" placeholder="Todo title" />
-      <button type="submit" disabled={isLoading}>
-        {isLoading ? "Adding..." : "Add Todo"}
+      <input name="email" />
+      <input name="password" />
+      <button type="submit">Login</button>
+      <button type="button" onClick={goBack}>
+        Back
       </button>
-
-      {isSuccess && <div>Todo added successfully!</div>}
-      {isError && <div>Error: {error.message}</div>}
     </form>
   );
 }
 ```
 
-### Understanding Each useMutation Return Value
+### useNavigate with Query Parameters
 
 ```jsx
-const mutation = useMutation({
-  mutationFn: updateUser,
-});
-
-// 1. mutate - Function to trigger the mutation
-mutation.mutate({ id: 1, name: "John" });
-
-// 2. mutateAsync - Promise version of mutate
-const result = await mutation.mutateAsync(userData);
-
-// 3. isLoading - Mutation in progress
-console.log(mutation.isLoading); // true/false
-
-// 4. isError - Mutation failed
-console.log(mutation.isError); // true/false
-
-// 5. error - The error object
-console.log(mutation.error); // Error: Failed to update
-
-// 6. isSuccess - Mutation succeeded
-console.log(mutation.isSuccess); // true/false
-
-// 7. data - Response data from mutation
-console.log(mutation.data); // { id: 1, name: 'John', updated: true }
-
-// 8. reset - Clear mutation state
-mutation.reset(); // Resets isError, isSuccess, etc.
-
-// 9. status - Current state
-console.log(mutation.status); // 'idle', 'loading', 'error', 'success'
-```
-
-### Mutation with Automatic Cache Update
-
-```jsx
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-function DeleteTodo({ todoId }) {
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: (id) => fetch(`/api/todos/${id}`, { method: "DELETE" }),
-
-    // Called before mutation
-    onMutate: async (deletedId) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["todos"] });
-
-      // Snapshot previous value
-      const previousTodos = queryClient.getQueryData(["todos"]);
-
-      // Optimistically update cache
-      queryClient.setQueryData(["todos"], (old) =>
-        old.filter((todo) => todo.id !== deletedId),
-      );
-
-      return { previousTodos };
-    },
-
-    // If error, rollback
-    onError: (err, deletedId, context) => {
-      queryClient.setQueryData(["todos"], context.previousTodos);
-    },
-
-    // Always refetch after success or error
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-    },
-  });
-
-  return <button onClick={() => mutation.mutate(todoId)}>Delete</button>;
-}
-```
-
----
-
-## Query Keys
-
-Query keys uniquely identify queries for caching.
-
-### Basic Query Keys
-
-```jsx
-// Simple key - all todos
-useQuery({ queryKey: ["todos"], queryFn: fetchTodos });
-
-// Key with ID - single todo
-useQuery({
-  queryKey: ["todo", todoId],
-  queryFn: () => fetchTodo(todoId),
-});
-
-// Key with object - filtered todos
-useQuery({
-  queryKey: ["todos", { status: "completed", userId: 1 }],
-  queryFn: () => fetchTodos({ status: "completed", userId: 1 }),
-});
-
-// Nested keys
-useQuery({
-  queryKey: ["users", userId, "posts"],
-  queryFn: () => fetchUserPosts(userId),
-});
-
-// Keys with dates
-useQuery({
-  queryKey: ["analytics", { startDate, endDate }],
-  queryFn: () => fetchAnalytics(startDate, endDate),
-});
-```
-
-### How Query Keys Work
-
-```jsx
-// These are different queries (different cache entries)
-useQuery({ queryKey: ['todos'] })              // Key: ['todos']
-useQuery({ queryKey: ['todos', 'active'] })    // Key: ['todos', 'active']
-useQuery({ queryKey: ['todos', { id: 1 }] })   // Key: ['todos', { id: 1 }]
-useQuery({ queryKey: ['todo', 1] })            // Key: ['todo', 1]
-
-// Order matters
-['todos', 'active']     // Different from
-['active', 'todos']     // This is different!
-
-// Objects are compared by keys, not order
-{ status: 'active', userId: 1 }   // Same as
-{ userId: 1, status: 'active' }   // This is the same!
-```
-
-### Invalidating Queries by Key
-
-```jsx
-const queryClient = useQueryClient();
-
-// Invalidate all todos queries
-queryClient.invalidateQueries({ queryKey: ["todos"] });
-
-// Invalidate specific todo
-queryClient.invalidateQueries({ queryKey: ["todo", 1] });
-
-// Invalidate all queries that start with 'todos'
-queryClient.invalidateQueries({ queryKey: ["todos"] });
-// This invalidates: ['todos'], ['todos', 'active'], ['todos', { id: 1 }]
-
-// Invalidate exact match only
-queryClient.invalidateQueries({
-  queryKey: ["todos"],
-  exact: true, // Only invalidates ['todos'], not ['todos', 'active']
-});
-
-// Invalidate multiple keys
-queryClient.invalidateQueries({ queryKey: ["users"] });
-queryClient.invalidateQueries({ queryKey: ["posts"] });
-```
-
----
-
-## Query Functions
-
-Query functions fetch data and must return a promise.
-
-### Basic Query Functions
-
-```jsx
-// Simple fetch
-const fetchUsers = async () => {
-  const response = await fetch("/api/users");
-  if (!response.ok) throw new Error("Network error");
-  return response.json();
-};
-
-// With parameters from queryKey
-const fetchUser = async ({ queryKey }) => {
-  const [_, userId] = queryKey; // ['user', 123] -> userId = 123
-  const response = await fetch(`/api/users/${userId}`);
-  return response.json();
-};
-
-// With custom error
-const fetchData = async () => {
-  try {
-    const response = await fetch("/api/data");
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json();
-  } catch (error) {
-    throw new Error(`Failed to fetch: ${error.message}`);
-  }
-};
-
-// Using axios
-import axios from "axios";
-
-const fetchPosts = async () => {
-  const { data } = await axios.get("/api/posts");
-  return data;
-};
-```
-
-### Query Function with AbortController
-
-```jsx
-const fetchData = async ({ signal }) => {
-  const response = await fetch("/api/data", { signal });
-  return response.json();
-};
-
-useQuery({
-  queryKey: ["data"],
-  queryFn: fetchData,
-});
-// React Query automatically cancels on unmount
-```
-
-### Query Function with Delay (Testing)
-
-```jsx
-const fetchSlowData = async () => {
-  // Simulate slow network
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-
-  const response = await fetch("/api/data");
-  return response.json();
-};
-```
-
----
-
-## All Query Options
-
-### Complete useQuery Options
-
-```jsx
-const query = useQuery({
-  // Required
-  queryKey: ["todos"], // Unique key
-  queryFn: fetchTodos, // Function that fetches data
-
-  // Caching
-  staleTime: 5 * 60 * 1000, // Data fresh for 5 minutes
-  cacheTime: 10 * 60 * 1000, // Cache persists for 10 minutes
-  keepPreviousData: true, // Keep old data while fetching new
-
-  // Refetching
-  refetchOnWindowFocus: true, // Refetch when window focuses
-  refetchOnMount: true, // Refetch when component mounts
-  refetchOnReconnect: true, // Refetch when reconnecting
-  refetchInterval: 30000, // Refetch every 30 seconds
-  refetchIntervalInBackground: false, // Don't refetch in background
-
-  // Retry logic
-  retry: 3, // Retry 3 times on failure
-  retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
-
-  // Conditional fetching
-  enabled: true, // Auto-fetch if true
-
-  // Initial data
-  initialData: () => {
-    return localStorage.getItem("todos");
-  },
-  initialDataUpdatedAt: () => Date.now(),
-
-  // Selector (transform data)
-  select: (data) => data.filter((todo) => todo.completed),
-
-  // Callbacks
-  onSuccess: (data) => {
-    console.log("Data loaded:", data);
-  },
-  onError: (error) => {
-    console.error("Error:", error);
-  },
-  onSettled: (data, error) => {
-    console.log("Query completed");
-  },
-
-  // Suspense
-  suspense: false,
-
-  // Use error boundary
-  useErrorBoundary: false,
-});
-```
-
-### Understanding Each Option
-
-```jsx
-// 1. staleTime - How long until data is considered "stale"
-// Data becomes stale after this time and will refetch in background
-staleTime: 5000; // 5 seconds
-
-// 2. cacheTime - How long to keep unused data in cache
-// After this time, inactive queries are garbage collected
-cacheTime: 300000; // 5 minutes
-
-// 3. keepPreviousData - Keep old data while fetching new
-keepPreviousData: true; // Good for pagination
-
-// 4. refetchOnWindowFocus - Refetch when user returns to tab
-refetchOnWindowFocus: true; // Keep data fresh
-
-// 5. refetchInterval - Poll for updates
-refetchInterval: 10000; // Check for new data every 10 seconds
-
-// 6. retry - Automatic retries on failure
-retry: 3; // Try 3 times before showing error
-
-// 7. enabled - Only run query when condition is true
-enabled: !!userId; // Only run if userId exists
-
-// 8. select - Transform data (memoized)
-select: (data) => data.map((user) => user.name);
-
-// 9. initialData - Start with cached/placeholder data
-initialData: () => {
-  const cached = localStorage.getItem("data");
-  return cached ? JSON.parse(cached) : [];
-};
-```
-
----
-
-## All Mutation Options
-
-### Complete useMutation Options
-
-```jsx
-const mutation = useMutation({
-  // Required
-  mutationFn: updateUser, // Function that performs mutation
-
-  // Optional
-  mutationKey: ["update-user"], // Key for this mutation
-
-  // Callbacks
-  onMutate: async (variables) => {
-    // Called before mutation
-    // Return context for rollback
-    return { previousData };
-  },
-
-  onSuccess: (data, variables, context) => {
-    // Called on success
-    console.log("Success:", data);
-  },
-
-  onError: (error, variables, context) => {
-    // Called on error
-    console.error("Error:", error);
-  },
-
-  onSettled: (data, error, variables, context) => {
-    // Called after success or error
-    console.log("Mutation finished");
-  },
-
-  // Retry logic
-  retry: 3,
-  retryDelay: (attempt) => attempt * 1000,
-
-  // Use error boundary
-  useErrorBoundary: false,
-});
-
-// Trigger mutation
-mutation.mutate(variables);
-
-// Or with promise
-try {
-  const result = await mutation.mutateAsync(variables);
-} catch (error) {
-  // Handle error
-}
-```
-
----
-
-## Query Invalidation
-
-### Basic Invalidation
-
-```jsx
-const queryClient = useQueryClient();
-
-// Invalidate and refetch
-queryClient.invalidateQueries({ queryKey: ["todos"] });
-
-// Invalidate multiple
-queryClient.invalidateQueries({ queryKey: ["todos"] });
-queryClient.invalidateQueries({ queryKey: ["users"] });
-
-// Invalidate all queries
-queryClient.invalidateQueries();
-```
-
-### Manual Cache Updates
-
-```jsx
-const queryClient = useQueryClient();
-
-// Set query data manually
-queryClient.setQueryData(["todos"], (oldData) => {
-  return [...oldData, newTodo];
-});
-
-// Get query data
-const todos = queryClient.getQueryData(["todos"]);
-
-// Remove query from cache
-queryClient.removeQueries({ queryKey: ["todos"] });
-
-// Reset query to initial state
-queryClient.resetQueries({ queryKey: ["todos"] });
-
-// Refetch query
-queryClient.refetchQueries({ queryKey: ["todos"] });
-```
-
-### Complete Example with CRUD
-
-```jsx
-function TodoApp() {
-  const queryClient = useQueryClient();
-
-  // Read todos
-  const { data: todos } = useQuery({
-    queryKey: ["todos"],
-    queryFn: fetchTodos,
-  });
-
-  // Create todo
-  const createMutation = useMutation({
-    mutationFn: createTodo,
-    onSuccess: () => {
-      // Refetch todos after creation
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-    },
-  });
-
-  // Update todo
-  const updateMutation = useMutation({
-    mutationFn: updateTodo,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-    },
-  });
-
-  // Delete todo
-  const deleteMutation = useMutation({
-    mutationFn: deleteTodo,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-    },
-  });
+function SearchForm() {
+  const navigate = useNavigate();
+
+  const handleSearch = (searchTerm) => {
+    // Navigate with query parameter
+    navigate(`/products?search=${searchTerm}`);
+  };
+
+  const handleFilter = (category, sort) => {
+    // Multiple query parameters
+    navigate(`/products?category=${category}&sort=${sort}`);
+  };
 
   return (
     <div>
-      <button onClick={() => createMutation.mutate({ title: "New Todo" })}>
-        Add Todo
-      </button>
-
-      {todos?.map((todo) => (
-        <div key={todo.id}>
-          <span>{todo.title}</span>
-          <button onClick={() => updateMutation.mutate(todo)}>Update</button>
-          <button onClick={() => deleteMutation.mutate(todo.id)}>Delete</button>
-        </div>
-      ))}
+      <input onChange={(e) => handleSearch(e.target.value)} />
+      <select onChange={(e) => handleFilter(e.target.value, "asc")}>
+        <option value="electronics">Electronics</option>
+        <option value="clothing">Clothing</option>
+      </select>
     </div>
   );
 }
@@ -799,170 +560,408 @@ function TodoApp() {
 
 ---
 
-## Parallel Queries
+## Query Parameters
 
-### useQueries for Multiple Queries
+### useSearchParams - Read/Write Query Strings
 
 ```jsx
-import { useQueries } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 
-function Dashboard() {
-  const results = useQueries({
-    queries: [
-      {
-        queryKey: ["users"],
-        queryFn: fetchUsers,
-      },
-      {
-        queryKey: ["posts"],
-        queryFn: fetchPosts,
-      },
-      {
-        queryKey: ["comments"],
-        queryFn: fetchComments,
-      },
-    ],
-  });
+function ProductsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [usersQuery, postsQuery, commentsQuery] = results;
+  // Reading query parameters
+  const category = searchParams.get("category"); // ?category=electronics
+  const sort = searchParams.get("sort"); // ?sort=asc
+  const page = searchParams.get("page") || "1"; // ?page=2
 
-  if (usersQuery.isLoading || postsQuery.isLoading || commentsQuery.isLoading) {
-    return <div>Loading dashboard...</div>;
-  }
+  // Check if parameter exists
+  const hasFilter = searchParams.has("filter");
+
+  // Get all parameters as object
+  const allParams = Object.fromEntries(searchParams);
+  // { category: 'electronics', sort: 'asc', page: '2' }
+
+  // Setting query parameters
+  const setCategory = (cat) => {
+    setSearchParams({ category: cat });
+  };
+
+  // Merge with existing
+  const setPage = (newPage) => {
+    setSearchParams((prev) => {
+      prev.set("page", newPage);
+      return prev;
+    });
+  };
+
+  // Remove parameter
+  const clearFilter = () => {
+    setSearchParams((prev) => {
+      prev.delete("category");
+      return prev;
+    });
+  };
+
+  // Reset all parameters
+  const resetFilters = () => {
+    setSearchParams({});
+  };
 
   return (
     <div>
-      <UsersList users={usersQuery.data} />
-      <PostsList posts={postsQuery.data} />
-      <CommentsList comments={commentsQuery.data} />
+      <div>Current category: {category || "All"}</div>
+      <div>Current page: {page}</div>
+
+      <button onClick={() => setCategory("electronics")}>Electronics</button>
+      <button onClick={() => setCategory("clothing")}>Clothing</button>
+      <button onClick={clearFilter}>Clear Category</button>
+      <button onClick={() => setPage(Number(page) + 1)}>Next Page</button>
+      <button onClick={resetFilters}>Reset All</button>
     </div>
   );
 }
 ```
 
-### Dynamic Parallel Queries
+### Real-world Filter Component
 
 ```jsx
-function UserTodos({ userIds }) {
-  const userQueries = useQueries({
-    queries: userIds.map((userId) => ({
-      queryKey: ["todos", userId],
-      queryFn: () => fetchUserTodos(userId),
-      enabled: !!userId,
-    })),
-  });
+function ProductFilters() {
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const isLoading = userQueries.some((query) => query.isLoading);
-  const isError = userQueries.some((query) => query.isError);
+  const filters = {
+    category: searchParams.get("category") || "",
+    minPrice: searchParams.get("minPrice") || "",
+    maxPrice: searchParams.get("maxPrice") || "",
+    sort: searchParams.get("sort") || "name",
+    inStock: searchParams.get("inStock") === "true",
+  };
 
-  if (isLoading) return <div>Loading todos...</div>;
-  if (isError) return <div>Error loading todos</div>;
+  const updateFilter = (key, value) => {
+    setSearchParams((prev) => {
+      if (value) {
+        prev.set(key, value);
+      } else {
+        prev.delete(key);
+      }
+      return prev;
+    });
+  };
 
-  const allTodos = userQueries.flatMap((query) => query.data);
+  const applyFilters = () => {
+    // All filters are already in URL
+    // The component reading them will react to changes
+  };
 
   return (
     <div>
-      {allTodos.map((todo) => (
-        <div key={todo.id}>{todo.title}</div>
-      ))}
-    </div>
-  );
-}
-```
-
----
-
-## Dependent Queries
-
-### Query That Depends on Another
-
-```jsx
-function UserProfile({ userId }) {
-  // First query - get user
-  const { data: user, isLoading: userLoading } = useQuery({
-    queryKey: ["user", userId],
-    queryFn: () => fetchUser(userId),
-    enabled: !!userId,
-  });
-
-  // Second query - depends on user
-  const { data: posts, isLoading: postsLoading } = useQuery({
-    queryKey: ["posts", user?.id],
-    queryFn: () => fetchUserPosts(user.id),
-    enabled: !!user, // Only run when user exists
-  });
-
-  if (userLoading) return <div>Loading user...</div>;
-  if (postsLoading) return <div>Loading posts...</div>;
-
-  return (
-    <div>
-      <h1>{user.name}</h1>
-      <ul>
-        {posts.map((post) => (
-          <li key={post.id}>{post.title}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
----
-
-## Infinite Queries
-
-### useInfiniteQuery for Pagination
-
-```jsx
-import { useInfiniteQuery } from "@tanstack/react-query";
-
-function InfinitePosts() {
-  const {
-    data, // Array of pages
-    fetchNextPage, // Load next page
-    hasNextPage, // Is there more data?
-    isFetchingNextPage, // Loading next page
-    isLoading, // First load
-    isError, // Error state
-    error, // Error object
-  } = useInfiniteQuery({
-    queryKey: ["posts"],
-    queryFn: ({ pageParam = 1 }) => fetchPosts(pageParam),
-    getNextPageParam: (lastPage, allPages) => {
-      // Return next page number, or undefined if no more
-      return lastPage.hasMore ? lastPage.page + 1 : undefined;
-    },
-    initialPageParam: 1,
-  });
-
-  if (isLoading) return <div>Loading posts...</div>;
-  if (isError) return <div>Error: {error.message}</div>;
-
-  return (
-    <div>
-      {data.pages.map((page, i) => (
-        <div key={i}>
-          {page.posts.map((post) => (
-            <div key={post.id}>
-              <h3>{post.title}</h3>
-              <p>{post.body}</p>
-            </div>
-          ))}
-        </div>
-      ))}
-
-      <button
-        onClick={() => fetchNextPage()}
-        disabled={!hasNextPage || isFetchingNextPage}
+      <select
+        value={filters.category}
+        onChange={(e) => updateFilter("category", e.target.value)}
       >
-        {isFetchingNextPage
-          ? "Loading more..."
-          : hasNextPage
-            ? "Load More"
-            : "Nothing more to load"}
-      </button>
+        <option value="">All Categories</option>
+        <option value="electronics">Electronics</option>
+        <option value="clothing">Clothing</option>
+      </select>
+
+      <input
+        type="number"
+        placeholder="Min Price"
+        value={filters.minPrice}
+        onChange={(e) => updateFilter("minPrice", e.target.value)}
+      />
+
+      <input
+        type="number"
+        placeholder="Max Price"
+        value={filters.maxPrice}
+        onChange={(e) => updateFilter("maxPrice", e.target.value)}
+      />
+
+      <label>
+        <input
+          type="checkbox"
+          checked={filters.inStock}
+          onChange={(e) => updateFilter("inStock", e.target.checked)}
+        />
+        In Stock Only
+      </label>
+
+      <button onClick={() => setSearchParams({})}>Clear All Filters</button>
     </div>
+  );
+}
+```
+
+---
+
+## Protected Routes
+
+### Basic Protected Route
+
+```jsx
+import { Navigate } from "react-router-dom";
+
+function ProtectedRoute({ children, isAuthenticated }) {
+  if (!isAuthenticated) {
+    // Redirect to login if not authenticated
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+// Usage
+function App() {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+}
+```
+
+### Protected Route with Role Check
+
+```jsx
+function ProtectedRoute({ children, isAuthenticated, userRole, allowedRoles }) {
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(userRole)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  return children;
+}
+
+// Usage
+<Route
+  path="/admin"
+  element={
+    <ProtectedRoute
+      isAuthenticated={isAuthenticated}
+      userRole={userRole}
+      allowedRoles={["admin", "superadmin"]}
+    >
+      <AdminPanel />
+    </ProtectedRoute>
+  }
+/>;
+```
+
+### Protected Route with Layout
+
+```jsx
+function App() {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+
+      {/* Protected routes wrapper */}
+      <Route element={<ProtectedLayout isAuthenticated={isAuthenticated} />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
+      </Route>
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
+function ProtectedLayout({ isAuthenticated }) {
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <div>
+      <nav>Protected Navigation</nav>
+      <Outlet /> {/* Child routes render here */}
+    </div>
+  );
+}
+```
+
+### Save Intended Destination
+
+```jsx
+import { useLocation, Navigate } from "react-router-dom";
+
+function ProtectedRoute({ children, isAuthenticated }) {
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    // Save the location they tried to access
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
+
+function LoginPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Get the page they were trying to visit
+  const from = location.state?.from?.pathname || "/dashboard";
+
+  const handleLogin = async () => {
+    await login();
+    // Redirect them back to their intended destination
+    navigate(from, { replace: true });
+  };
+
+  return (
+    <form onSubmit={handleLogin}>
+      <button type="submit">Login</button>
+      <p>Please login to view: {from}</p>
+    </form>
+  );
+}
+```
+
+---
+
+## Route Layouts
+
+### Layout Component Pattern
+
+```jsx
+// layouts/MainLayout.jsx
+import { Outlet } from "react-router-dom";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+
+function MainLayout() {
+  return (
+    <div>
+      <Header />
+      <main>
+        <Outlet /> {/* Page content goes here */}
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+// layouts/AuthLayout.jsx
+function AuthLayout() {
+  return (
+    <div className="auth-layout">
+      <div className="auth-container">
+        <Outlet />
+      </div>
+    </div>
+  );
+}
+
+// App.jsx
+function App() {
+  return (
+    <Routes>
+      {/* Public routes with main layout */}
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+      </Route>
+
+      {/* Auth routes with auth layout */}
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Route>
+
+      {/* Protected routes with main layout */}
+      <Route element={<ProtectedLayout />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
+    </Routes>
+  );
+}
+```
+
+---
+
+## Lazy Loading
+
+### Route-based Code Splitting
+
+```jsx
+import { lazy, Suspense } from "react";
+import { Routes, Route } from "react-router-dom";
+
+// Lazy load components - loaded only when needed
+const Home = lazy(() => import("./pages/Home"));
+const About = lazy(() => import("./pages/About"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Settings = lazy(() => import("./pages/Settings"));
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/settings" element={<Settings />} />
+      </Routes>
+    </Suspense>
+  );
+}
+```
+
+### Lazy Loading with Layouts
+
+```jsx
+const MainLayout = lazy(() => import("./layouts/MainLayout"));
+const DashboardLayout = lazy(() => import("./layouts/DashboardLayout"));
+const Home = lazy(() => import("./pages/Home"));
+const About = lazy(() => import("./pages/About"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+
+function App() {
+  return (
+    <Suspense fallback={<GlobalLoadingSpinner />}>
+      <Routes>
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+        </Route>
+
+        <Route element={<DashboardLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }
 ```
@@ -971,182 +970,182 @@ function InfinitePosts() {
 
 ## Complete Examples
 
-### Example 1: Todo App
+### Example 1: Blog with Nested Routes
 
 ```jsx
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+// App.jsx
+import { Routes, Route } from "react-router-dom";
+import BlogLayout from "./layouts/BlogLayout";
+import PostLayout from "./layouts/PostLayout";
+import Home from "./pages/Home";
+import Posts from "./pages/Posts";
+import PostDetail from "./pages/PostDetail";
+import PostComments from "./pages/PostComments";
+import PostAuthor from "./pages/PostAuthor";
 
-// API functions
-const fetchTodos = async () => {
-  const res = await fetch("/api/todos");
-  return res.json();
-};
+function App() {
+  return (
+    <Routes>
+      <Route element={<BlogLayout />}>
+        <Route path="/" element={<Home />} />
 
-const addTodo = async (newTodo) => {
-  const res = await fetch("/api/todos", {
-    method: "POST",
-    body: JSON.stringify(newTodo),
-    headers: { "Content-Type": "application/json" },
-  });
-  return res.json();
-};
+        <Route path="posts" element={<Posts />} />
 
-const updateTodo = async ({ id, updates }) => {
-  const res = await fetch(`/api/todos/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(updates),
-    headers: { "Content-Type": "application/json" },
-  });
-  return res.json();
-};
+        <Route path="posts/:postId" element={<PostLayout />}>
+          <Route index element={<PostDetail />} />
+          <Route path="comments" element={<PostComments />} />
+          <Route path="author" element={<PostAuthor />} />
+        </Route>
+      </Route>
+    </Routes>
+  );
+}
 
-const deleteTodo = async (id) => {
-  await fetch(`/api/todos/${id}`, { method: "DELETE" });
-};
+// layouts/BlogLayout.jsx
+import { Outlet, Link } from "react-router-dom";
 
-function TodoApp() {
-  const queryClient = useQueryClient();
+function BlogLayout() {
+  return (
+    <div>
+      <header>
+        <Link to="/">My Blog</Link>
+        <nav>
+          <Link to="/posts">Posts</Link>
+        </nav>
+      </header>
+      <Outlet />
+      <footer>© 2024 My Blog</footer>
+    </div>
+  );
+}
 
-  // Get todos
-  const { data: todos, isLoading } = useQuery({
-    queryKey: ["todos"],
-    queryFn: fetchTodos,
-  });
+// layouts/PostLayout.jsx
+import { Outlet, NavLink, useParams } from "react-router-dom";
 
-  // Add todo
-  const addMutation = useMutation({
-    mutationFn: addTodo,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-    },
-  });
+function PostLayout() {
+  const { postId } = useParams();
 
-  // Update todo
-  const updateMutation = useMutation({
-    mutationFn: updateTodo,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-    },
-  });
+  return (
+    <div>
+      <nav>
+        <NavLink to={`/posts/${postId}`}>Content</NavLink>
+        <NavLink to={`/posts/${postId}/comments`}>Comments</NavLink>
+        <NavLink to={`/posts/${postId}/author`}>Author</NavLink>
+      </nav>
+      <Outlet />
+    </div>
+  );
+}
+```
 
-  // Delete todo
-  const deleteMutation = useMutation({
-    mutationFn: deleteTodo,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-    },
+### Example 2: E-commerce with Filters
+
+```jsx
+// App.jsx
+import { Routes, Route } from "react-router-dom";
+import Products from "./pages/Products";
+import ProductDetail from "./pages/ProductDetail";
+import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/products" element={<Products />} />
+      <Route path="/products/:id" element={<ProductDetail />} />
+      <Route path="/cart" element={<Cart />} />
+      <Route path="/checkout" element={<Checkout />} />
+    </Routes>
+  );
+}
+
+// pages/Products.jsx
+import { useSearchParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+
+function Products() {
+  const [searchParams] = useSearchParams();
+
+  const category = searchParams.get("category");
+  const minPrice = searchParams.get("minPrice");
+  const maxPrice = searchParams.get("maxPrice");
+  const sort = searchParams.get("sort");
+
+  const { data: products, isLoading } = useQuery({
+    queryKey: ["products", { category, minPrice, maxPrice, sort }],
+    queryFn: () => fetchProducts({ category, minPrice, maxPrice, sort }),
   });
 
   if (isLoading) return <div>Loading...</div>;
 
   return (
     <div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const formData = new FormData(e.target);
-          addMutation.mutate({
-            title: formData.get("title"),
-            completed: false,
-          });
-          e.target.reset();
-        }}
-      >
-        <input name="title" placeholder="New todo" />
-        <button type="submit">Add</button>
-      </form>
+      <ProductFilters />
 
-      {todos.map((todo) => (
-        <div key={todo.id}>
-          <input
-            type="checkbox"
-            checked={todo.completed}
-            onChange={() =>
-              updateMutation.mutate({
-                id: todo.id,
-                updates: { completed: !todo.completed },
-              })
-            }
-          />
-          <span
-            style={{ textDecoration: todo.completed ? "line-through" : "none" }}
-          >
-            {todo.title}
-          </span>
-          <button onClick={() => deleteMutation.mutate(todo.id)}>Delete</button>
-        </div>
-      ))}
+      <div className="products-grid">
+        {products.map((product) => (
+          <Link to={`/products/${product.id}`} key={product.id}>
+            <h3>{product.name}</h3>
+            <p>${product.price}</p>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
 ```
 
-### Example 2: Search with Debounce
+### Example 3: Authentication Flow
 
 ```jsx
-import { useQuery } from "@tanstack/react-query";
-import { useState, useDebounce } from "react";
+// App.jsx
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./hooks/useAuth";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 
-function SearchUsers() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebounce(searchTerm, 500);
-
-  const { data: users, isLoading } = useQuery({
-    queryKey: ["users", debouncedSearch],
-    queryFn: () =>
-      fetch(`/api/users?search=${debouncedSearch}`).then((res) => res.json()),
-    enabled: debouncedSearch.length > 0,
-  });
+function App() {
+  const { isAuthenticated, user } = useAuth();
 
   return (
-    <div>
-      <input
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        placeholder="Search users..."
+    <Routes>
+      {/* Public routes */}
+      <Route
+        path="/login"
+        element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />}
+      />
+      <Route
+        path="/register"
+        element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />}
       />
 
-      {isLoading && <div>Searching...</div>}
+      {/* Protected routes */}
+      <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
+      </Route>
 
-      {users && (
-        <ul>
-          {users.map((user) => (
-            <li key={user.id}>{user.name}</li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-```
+      {/* Role-based routes */}
+      <Route
+        element={
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            allowedRoles={["admin"]}
+            userRole={user?.role}
+          />
+        }
+      >
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/admin/users" element={<UserManagement />} />
+      </Route>
 
-### Example 3: Prefetching Data
-
-```jsx
-function UserList() {
-  const queryClient = useQueryClient();
-
-  const { data: users } = useQuery({
-    queryKey: ["users"],
-    queryFn: fetchUsers,
-  });
-
-  const prefetchUser = (userId) => {
-    queryClient.prefetchQuery({
-      queryKey: ["user", userId],
-      queryFn: () => fetchUser(userId),
-      staleTime: 10000,
-    });
-  };
-
-  return (
-    <ul>
-      {users?.map((user) => (
-        <li key={user.id} onMouseEnter={() => prefetchUser(user.id)}>
-          <Link to={`/users/${user.id}`}>{user.name}</Link>
-        </li>
-      ))}
-    </ul>
+      {/* 404 */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 ```
@@ -1155,88 +1154,96 @@ function UserList() {
 
 ## API Reference
 
-### useQuery Return Values
+### Components
 
-| Property       | Description                           | Type     |
-| -------------- | ------------------------------------- | -------- |
-| data           | Query result data                     | any      |
-| isLoading      | First load in progress                | boolean  |
-| isFetching     | Any fetch in progress                 | boolean  |
-| isError        | Error occurred                        | boolean  |
-| error          | Error object                          | Error    |
-| isSuccess      | Query succeeded                       | boolean  |
-| isIdle         | Query not yet executed                | boolean  |
-| status         | 'idle', 'loading', 'error', 'success' | string   |
-| fetchStatus    | 'idle', 'fetching', 'paused'          | string   |
-| refetch        | Manual refetch function               | function |
-| remove         | Remove query from cache               | function |
-| dataUpdatedAt  | Timestamp of last data update         | number   |
-| errorUpdatedAt | Timestamp of last error               | number   |
+| Component     | Purpose                | Example                                  |
+| ------------- | ---------------------- | ---------------------------------------- |
+| BrowserRouter | Enables routing        | `<BrowserRouter><App /></BrowserRouter>` |
+| Routes        | Container for routes   | `<Routes>...</Routes>`                   |
+| Route         | Defines a route        | `<Route path="/" element={<Home />} />`  |
+| Link          | Navigation link        | `<Link to="/about">About</Link>`         |
+| NavLink       | Link with active state | `<NavLink to="/">Home</NavLink>`         |
+| Navigate      | Redirect               | `<Navigate to="/login" />`               |
+| Outlet        | Nested route renderer  | `<Outlet />`                             |
 
-### useMutation Return Values
+### Hooks
 
-| Property    | Description                           | Type     |
-| ----------- | ------------------------------------- | -------- |
-| mutate      | Trigger mutation                      | function |
-| mutateAsync | Promise version                       | function |
-| isLoading   | Mutation in progress                  | boolean  |
-| isError     | Error occurred                        | boolean  |
-| error       | Error object                          | Error    |
-| isSuccess   | Mutation succeeded                    | boolean  |
-| isIdle      | Not yet executed                      | boolean  |
-| status      | 'idle', 'loading', 'error', 'success' | string   |
-| reset       | Reset mutation state                  | function |
-| data        | Response data                         | any      |
+| Hook            | Purpose                 | Returns                           |
+| --------------- | ----------------------- | --------------------------------- |
+| useParams       | Get URL parameters      | `{ id: '123' }`                   |
+| useSearchParams | Get/set query string    | `[searchParams, setSearchParams]` |
+| useNavigate     | Programmatic navigation | `navigate()` function             |
+| useLocation     | Get current location    | `{ pathname, search, state }`     |
+| useMatch        | Match current route     | `match` object or null            |
 
-### QueryClient Methods
+### useLocation Details
 
-| Method              | Description                    |
-| ------------------- | ------------------------------ |
-| getQueryData()      | Get cached query data          |
-| setQueryData()      | Set query data manually        |
-| invalidateQueries() | Mark queries as stale          |
-| refetchQueries()    | Refetch queries                |
-| removeQueries()     | Remove queries from cache      |
-| resetQueries()      | Reset queries to initial state |
-| prefetchQuery()     | Prefetch data into cache       |
-| fetchQuery()        | Fetch and cache data           |
-| cancelQueries()     | Cancel ongoing queries         |
+```jsx
+const location = useLocation();
+console.log(location);
+// {
+//   pathname: '/products/123',
+//   search: '?category=electronics',
+//   hash: '#reviews',
+//   state: { fromHome: true },
+//   key: 'abc123'
+// }
+```
+
+### useNavigate Options
+
+```jsx
+navigate("/dashboard"); // Go to dashboard
+navigate(-1); // Go back
+navigate(1); // Go forward
+navigate("/login", { replace: true }); // Replace history
+navigate("/success", { state: { data } }); // Pass state
+```
 
 ## Troubleshooting
 
-Problem 1: Data not updating after mutation
+Problem 1: Routes not working
 
-Solution: Invalidate queries
+Solutions:
 
-```jsx
-onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: ["todos"] });
-};
-```
+- Ensure BrowserRouter is wrapping your app
+- Check Routes is used (not Switch in v6)
+- Verify route paths are correct
 
-Problem 2: Too many network requests
+Problem 2: Links not changing URL
 
-Solution: Increase staleTime
+Solutions:
 
-```jsx
-staleTime: 5 * 60 * 1000; // 5 minutes
-```
+- Check Link is inside Router context
+- Ensure no other click handlers interfering
+- Verify 'to' prop is correct
 
-Problem 3: Stale data showing
+Problem 3: Nested routes not rendering
 
-Solution: Reduce staleTime or enable refetchOnWindowFocus
+Solutions:
 
-```jsx
-staleTime: 0,
-refetchOnWindowFocus: true
-```
+- Add Outlet component in parent route
+- Check child routes are nested correctly
+- Verify parent route renders Outlet
+
+Problem 4: useParams returning undefined
+
+Solutions:
+
+- Check route definition has parameter
+- Verify component is rendered by Route
+- Ensure parameter name matches
 
 ## Useful Resources
 
-- React Query Docs: https://tanstack.com/query/latest
-- Examples: https://tanstack.com/query/latest/docs/react/examples/react/auto-refetching
-- GitHub: https://github.com/TanStack/query
+- React Router Docs: https://reactrouter.com/
+- GitHub Repository: https://github.com/remix-run/react-router
+- Examples: https://reactrouter.com/en/main/start/examples
 
 ---
 
-Created for beginners learning React Query
+Created for beginners learning React Router
+
+```
+
+```
